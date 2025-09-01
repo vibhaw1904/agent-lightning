@@ -1,133 +1,49 @@
 import asyncio
-import dotenv
-from agentlightning.trainer import Trainer
+
 from agentlightning.server import AgentLightningServer
-from agentlightning.types import PromptTemplate
-from agentlightning  import configure_logger
-from client import SimpleAgent
+from agentlightning.types import NamedResources, PromptTemplate
 
 
-# def main():
-#     # Create agent instance
-#     agent = SimpleAgent()
-    
-#     # Set up trainer with distributed workers
-#     trainer = Trainer(n_workers=2)
-    
-#     trainer.fit(agent,backend="http://127.0.0.1:9997")
-#     # Example tasks for training
-#     prompt_candidates = [
-#         {"prompt": "Explain the concept of machine learning in simple terms", "id": "task_1"},
-#         {"prompt": "What are the benefits of distributed computing?", "id": "task_2"},
-#         {"prompt": "How does reinforcement learning work?", "id": "task_3"}
-#     ]
-
-    
-    # Start training (you would typically run this with a server backend)
-    # print("Starting Agent Lightning training...")
-    
-    # # For demonstration, run a single rollout
-    # sample_resources = {
-    #     "system_prompt": type('obj', (object,), {"template": "You are a helpful AI assistant that provides clear and concise explanations."})()
-    # }
-    
-    # result = agent.training_rollout(example_tasks[0], "demo_rollout", sample_resources)
-    # print(f"Training result: {result}")
-
-   
-
-
-async def prompt_optimization():
-    print("🚀 Starting prompt optimization process...")
-    
-    prompt_candidates = [
-        {"prompt": "Explain the concept of machine learning in simple terms", "id": "task_1"},
-        {"prompt": "What are the benefits of distributed computing?", "id": "task_2"},
-        {"prompt": "How does reinforcement learning work?", "id": "task_3"}
-    ]
-    print(f"📝 Loaded {len(prompt_candidates)} prompt candidates")
-    
-    prompt_and_rewards = []
-    print("🖥️ Initializing AgentLightning server on 127.0.0.1:9997...")
+async def example_apo():
+    """
+    An example of how a prompt optimization works.
+    """
     server = AgentLightningServer(host="127.0.0.1", port=9997)
-    print("⏳ Starting server...")
     await server.start()
-    print("✅ Server started successfully!")
-    
-    print(f"\n🔄 Processing {len(prompt_candidates)} prompts...")
-    for i, prompt in enumerate(prompt_candidates, 1):
-        print(f"\n--- Processing Prompt {i}/{len(prompt_candidates)} ---")
-        print(f"📋 Current prompt: '{prompt['prompt']}'")
-        
-        # Send this prompt to all connected clients
-        print("📤 Creating prompt template and updating resources...")
-        resources = {
-            "system_prompt": PromptTemplate(template=prompt["prompt"], engine="f-string")
-        }
+
+    prompt_candidates = [
+        "Write about technology. Explain how it works in life and everything around it. Talk about old and new things and maybe some future stuff too. You can also write about AI and internet because that is also technology. Just make sure to explain how people are using technology every day and what is good and bad about it. Add some examples like phone, computer, car, etc. The writing should be long enough to look detailed. Don’t forget to mention some advantages and disadvantages. Make it like an essay that anyone can understand but also with good words. Try to explain things but not too much in detail because it will be boring. Also, maybe say something about how technology helps students and workers, but you can also mention negative points like addiction or something. Overall just explain everything about technology in one go.",
+        "Imagine you are a futurist education consultant in the year 2040. A global summit has invited you to deliver a short, inspiring essay (200 words) on the role of AI mentors in shaping the future of learning. In your essay, paint a vivid picture of how classrooms, online platforms, and personal study spaces have transformed because of AI. Describe how students in rural villages now access the same quality of education as elite urban schools, thanks to immersive AI-driven holographic tutors. Highlight a story of one fictional student—perhaps a 12-year-old in a remote area—whose life trajectory changes dramatically due to AI mentorship. Balance optimism with caution by acknowledging potential risks like dependency, bias in algorithms, or the fading role of human teachers. End with a powerful vision statement: a world where AI is not a replacement, but a bridge to unlock every child’s potential.",
+        "You are a friendly chatbot.",
+    ]
+
+    prompt_and_rewards = []
+
+    for prompt in prompt_candidates:
+        # 1. The optimization algorithm updates the prompt template
+        print(f"\n[Algo] Updating prompt template to: '{prompt}'")
+        resources: NamedResources = {"system_prompt": PromptTemplate(template=prompt, engine="f-string")}
+        # How the resource is used fully depends on the client implementation.
         await server.update_resources(resources)
-        print("✅ Resources updated successfully")
-        
-        # Queue a task for clients to process
-        print("📋 Queuing task for client processing...")
-        task_id = await server.queue_task(
-            sample={"prompt": "What is the capital of France?"}, 
-            mode="train"
-        )
-        print(f"🆔 Task queued with ID: {task_id}")
 
-        # Wait for a client to complete it (30 second timeout)
-        print("⏳ Waiting for client to complete rollout (30s timeout)...")
+        # 2. The algorithm queues up a task from a dataset
+        print("[Algo] Queuing task for clients...")
+        task_id = await server.queue_task(sample={"prompt": "How is artificial intelligence changing education in terms of accessibility, personalization, and challenges?"}, mode="train")
+        print(f"[Algo] Task '{task_id}' is now available for clients.")
+
+        # 3. The algorithm waits for clients to process the task
         rollout = await server.poll_completed_rollout(task_id, timeout=30)
+        assert rollout, "Expected a completed rollout from the client."
+        print(f"[Algo] Received Result: {rollout}")
+        reward = rollout.final_reward
+        prompt_and_rewards.append((prompt, reward))
 
-        # Check if rollout was completed successfully
-        if rollout is None:
-            print(f"❌ Rollout timed out or failed for prompt: {prompt['prompt']}")
-            reward = 0.0
-        else:
-            print("✅ Rollout completed successfully!")
-            # Extract and store the reward (this comes from the return value of the client side)
-            reward = rollout.final_reward
-            print(f"🎯 Reward received: {reward}")
-        
-        prompt_and_rewards.append((prompt["prompt"], reward))
-        print(f"📊 Prompt processed. Current results: {len(prompt_and_rewards)}/{len(prompt_candidates)}")
-    
-    print("\n🎉 All prompts processed!")
-    print(f"📈 Final Results - All prompts and their rewards:")
-    for prompt, reward in prompt_and_rewards:
-        print(f"   • '{prompt}' → Reward: {reward:.3f}")
-    
-    if prompt_and_rewards:
-        best_prompt = max(prompt_and_rewards, key=lambda x: x[1])
-        print(f"\n🏆 Best performing prompt:")
-        print(f"   📝 Prompt: '{best_prompt[0]}'")
-        print(f"   🎯 Reward: {best_prompt[1]:.3f}")
-    else:
-        print("⚠️ No successful rollouts completed")
+    print(f"\n[Algo] All prompts and their rewards: {prompt_and_rewards}")
+    best_prompt = max(prompt_and_rewards, key=lambda x: x[1])
+    print(f"[Algo] Best prompt found: '{best_prompt[0]}' with reward {best_prompt[1]}")
 
-    print("\n🛑 Stopping server...")
     await server.stop()
-    print("✅ Server stopped successfully!")
 
-
-def main():
-    print("🔧 Configuring logger...")
-    configure_logger()
-    print("📄 Loading environment variables...")
-    dotenv.load_dotenv()
-    print("✅ Initial setup complete!")
-    
-    print("\n⚠️ NOTE: Make sure to run the trainer/client in a separate terminal:")
-    print("   python -c \"from client import SimpleAgent; from agentlightning.trainer import Trainer; agent=SimpleAgent(); trainer=Trainer(n_workers=2); trainer.fit(agent, backend='http://127.0.0.1:9997')\"")
-    
-    # Run the prompt optimization server
-    print("\n🎬 Starting main optimization process...")
-    asyncio.run(prompt_optimization())
 
 if __name__ == "__main__":
-    print("🌟 Agent Lightning Prompt Optimization Demo")
-    print("=" * 50)
-    main()
-    print("\n🎬 Demo completed!")
-    print("=" * 50)
-
+    asyncio.run(example_apo())
