@@ -3,6 +3,9 @@ from agentlightning.litagent import LitAgent
 from agentlightning.trainer import Trainer
 import random
 import os
+import asyncio
+from agentlightning.server import AgentLightningServer
+from agentlightning.types import PromptTemplate
 
 class SimpleAgent(LitAgent):
     def training_rollout(self, task, rollout_id, resources):
@@ -53,6 +56,7 @@ def main():
     # Set up trainer with distributed workers
     trainer = Trainer(n_workers=2)
     
+    trainer.fit(agent,backend="http://127.0.0.1:9997")
     # Example tasks for training
     example_tasks = [
         {"prompt": "Explain the concept of machine learning in simple terms", "id": "task_1"},
@@ -71,6 +75,11 @@ def main():
     result = agent.training_rollout(example_tasks[0], "demo_rollout", sample_resources)
     print(f"Training result: {result}")
 
+
+async def prompt_optimization():
+    server = AgentLightningServer(host="127.0.0.1", port=9997)
+    await server.start()
+
 if __name__ == "__main__":
-    main()
+    asyncio.run(prompt_optimization())
 
