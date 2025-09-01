@@ -1,9 +1,7 @@
 import dotenv
 import os
 import random
-
-from openai import OpenAI
-
+import ollama
 from agentlightning import configure_logger
 from agentlightning.litagent import LitAgent
 from agentlightning.trainer import Trainer
@@ -17,26 +15,40 @@ class SimpleAgent(LitAgent):
         print(f"🎯 [Client] Resources: {resources}")
 
         try:
-            # Use Anthropic instead of OpenAI
-            import anthropic
-            client = anthropic.Anthropic(
-                api_key=os.environ.get("ANTHROPIC_API_KEY")
-            )
-
-            result = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=1000,
-                system=resources["system_prompt"].template,
+            # Use Ollama with Llama 3.1 405B model
+            model_name = "llama3.1:405b"
+            
+            print(f"🦙 [Client] Using Ollama with model: {model_name}")
+            
+            # Construct the full prompt with system and user messages
+            system_prompt = resources["system_prompt"].template
+            user_prompt = task["prompt"]
+            
+            print(f"🚀 [Client] Making Ollama request...")
+            response = ollama.chat(
+                model=model_name,
                 messages=[
-                    {"role": "user", "content": task["prompt"]}
+                    {
+                        'role': 'system',
+                        'content': system_prompt,
+                    },
+                    {
+                        'role': 'user', 
+                        'content': user_prompt,
+                    }
                 ],
+                options={
+                    'temperature': 0.7,
+                    'num_predict': 1000,
+                }
             )
             
-            response = result.content[0].text
-            print(f"📝 [Client] Response: {response[:100]}...")
+            # Extract response text from Ollama response
+            response_text = response['message']['content']
+            print(f"📝 [Client] Response: {response_text[:100]}...")
 
             # Calculate reward
-            reward = min(len(response) / 100, 1.0) + random.uniform(0, 0.1)
+            reward = min(len(response_text) / 100, 1.0) + random.uniform(0, 0.1)
             print(f"🎯 [Client] Calculated reward: {reward}")
 
             # Return the reward directly (Agent Lightning handles the rollout completion)
