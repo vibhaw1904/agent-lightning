@@ -1,2 +1,5 @@
-2025-09-01 17:42:28,805 - WARNING - [OPENAI INSTRUMENTOR] Error setting up OpenAI streaming wrappers: No module named 'openai.resources.beta.chat'
-2025-09-01 17:42:28,811 - INFO - Session Replay for default trace: http://localhost:64985/notavailable/sessions?trace_id=17e7f42eaf9835429335bf21e6a30daf
+2025-09-02 11:44:33,533 - WARNING - [OPENAI INSTRUMENTOR] Error setting up OpenAI streaming wrappers: No module named 'openai.resources.beta.chat'
+2025-09-02 11:44:33,543 - INFO - Session Replay for default trace: http://localhost:54236/notavailable/sessions?trace_id=cf46ec93fb7e27a2bdd0e8393c197525
+2025-09-02 11:44:39,251 - ERROR - [OPENAI WRAPPER] Error in chat_completion_stream_wrapper: Error code: 404 - {'detail': 'Not Found'}
+2025-09-02 11:44:45,247 - ERROR - [OPENAI WRAPPER] Error in chat_completion_stream_wrapper: Error code: 404 - {'detail': 'Not Found'}
+2025-09-02 11:44:47,233 - ERROR - [OPENAI WRAPPER] Error in chat_completion_stream_wrapper: Error code: 404 - {'detail': 'Not Found'}
