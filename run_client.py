@@ -1,7 +1,7 @@
 import dotenv
 import os
 import random
-from openai import OpenAI
+import anthropic
 from agentlightning import configure_logger
 from agentlightning.litagent import LitAgent
 from agentlightning.trainer import Trainer
@@ -15,42 +15,33 @@ class SimpleAgent(LitAgent):
         print(f"🎯 [Client] Resources: {resources}")
 
         try:
-            # Use OpenAI client with Nugen API
-            api_key = os.environ.get("NUGEN_API_KEY")
-            model_name = "Llama-V3p1-8b-Instruct"
-            base_url = os.environ.get("NUGEN_API_BASE")
+            # Use Anthropic Claude API
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            model_name = "claude-3-haiku-20240307"
             
-            # Add the specific Nugen endpoint path
-            if base_url and not base_url.endswith('/api/v3/inference/completions'):
-                if base_url.endswith('/'):
-                    base_url = base_url + 'api/v3/inference/completions'
-                else:
-                    base_url = base_url + '/api/v3/inference/completions'
-            
-            print(f"🤖 [Client] Using Nugen API with OpenAI client")
-            print(f"🔗 [Client] Base URL: {base_url}")
+            print(f"🤖 [Client] Using Anthropic Claude")
             print(f"🤖 [Client] Model: {model_name}")
             
-            # Initialize OpenAI client with custom base URL
-            client = OpenAI(
-                api_key=api_key,
-                base_url="https://api.dev-nugen.in/api/v3/inference/"
-            )
+            # Initialize Anthropic client
+            client = anthropic.Anthropic(api_key=api_key)
             
             # Construct the messages
             system_prompt = resources["system_prompt"].template
             user_prompt = task["prompt"]
             
-            print(f"🚀 [Client] Making OpenAI request...")
-            response = client.completions.create(
+            print(f"🚀 [Client] Making Anthropic request...")
+            response = client.messages.create(
                 model=model_name,
-                prompt=f"{system_prompt}\n{user_prompt}",
-                temperature=0.7,
-                max_tokens=1000
+                max_tokens=1000,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7
             )
             
-            # Extract response text from OpenAI response
-            response_text = response.choices[0].text
+            # Extract response text from Anthropic response
+            response_text = response.content[0].text
             print(f"📝 [Client] Response: {response_text[:100]}...")
 
             # Calculate reward
