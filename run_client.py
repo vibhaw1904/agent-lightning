@@ -34,7 +34,7 @@ class SimpleAgent(LitAgent):
             # Initialize OpenAI client with custom base URL
             client = OpenAI(
                 api_key=api_key,
-                base_url=base_url
+                base_url="https://api.dev-nugen.in/api/v3/inference/"
             )
             
             # Construct the messages
@@ -42,27 +42,19 @@ class SimpleAgent(LitAgent):
             user_prompt = task["prompt"]
             
             print(f"🚀 [Client] Making OpenAI request...")
-            response = client.chat.completions.create(
+            response = client.completions.create(
                 model=model_name,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
-                        "role": "user", 
-                        "content": user_prompt
-                    }
-                ],
+                prompt=f"{system_prompt}\n{user_prompt}",
                 temperature=0.7,
                 max_tokens=1000
             )
             
             # Extract response text from OpenAI response
-            response_text = response.choices[0].message.content
+            response_text = response.choices[0].text
             print(f"📝 [Client] Response: {response_text[:100]}...")
 
             # Calculate reward
+            # we are calculating the reward based on response length it could be anything to calcualte reward
             reward = min(len(response_text) / 100, 1.0) + random.uniform(0, 0.1)
             print(f"🎯 [Client] Calculated reward: {reward}")
 
