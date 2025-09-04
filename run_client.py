@@ -44,9 +44,13 @@ class SimpleAgent(LitAgent):
             response_text = response.content[0].text
             print(f"📝 [Client] Response: {response_text[:100]}...")
 
-            # Calculate reward
-            # we are calculating the reward based on response length it could be anything to calcualte reward
-            reward = min(len(response_text) / 100, 1.0) + random.uniform(0, 0.1)
+            # Calculate advanced reward using our sophisticated system
+            from prompt_optimizer import calculate_advanced_reward
+            reward = calculate_advanced_reward(
+                response=response_text, 
+                query=user_prompt, 
+                system_prompt=system_prompt
+            )
             print(f"🎯 [Client] Calculated reward: {reward}")
 
             # Return the reward directly (Agent Lightning handles the rollout completion)
