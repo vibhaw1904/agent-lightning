@@ -1,10 +1,11 @@
 import dotenv
 import os
 import anthropic
+import asyncio
 from agentlightning import configure_logger
 from agentlightning.litagent import LitAgent
 from agentlightning.trainer import Trainer
-from prompt_optimizer import calculate_reward
+from advanced_prompt_optimizer import calculate_advanced_reward, simple_llm_judge_reward
 
 class Agent(LitAgent):
     
@@ -21,10 +22,16 @@ class Agent(LitAgent):
             )
             
             answer = response.content[0].text
+            print(f"📝 Response: {answer[:100]}...")
             
-            # Calculate reward
-            reward = calculate_reward(answer, task["prompt"])
+            # Choose evaluation method:
+            # Option 1: Advanced detailed evaluation (slower but more comprehensive)
+            reward = asyncio.run(calculate_advanced_reward(answer, task["prompt"], resources["system_prompt"].template))
             
+            # Option 2: Simple LLM judge (faster, still sophisticated)
+            # reward = asyncio.run(simple_llm_judge_reward(answer, task["prompt"]))
+            
+            print(f"🎯 LLM Judge Score: {reward:.2f}")
             return reward
             
         except Exception as e:

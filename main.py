@@ -1,7 +1,7 @@
 import asyncio
 from agentlightning.server import AgentLightningServer
 from agentlightning.types import NamedResources, PromptTemplate
-from prompt_optimizer import PromptOptimizer
+from advanced_prompt_optimizer import AdvancedPromptOptimizer
 
 async def run_evolution():
     """Clean evolution process with 5 prompts"""
@@ -11,7 +11,7 @@ async def run_evolution():
     
     # Setup
     server = AgentLightningServer(host="127.0.0.1", port=9997)
-    optimizer = PromptOptimizer()
+    optimizer = AdvancedPromptOptimizer()
     await server.start()
     print("✅ System ready")
     

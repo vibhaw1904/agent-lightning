@@ -1,2 +1,2 @@
-2025-09-04 15:08:54,299 - WARNING - [OPENAI INSTRUMENTOR] Error setting up OpenAI streaming wrappers: No module named 'openai.resources.beta.chat'
-2025-09-04 15:08:54,306 - INFO - Session Replay for default trace: http://localhost:50702/notavailable/sessions?trace_id=1f8c38da10f6762d9524c0c6d9ca183e
+2025-09-04 17:18:25,330 - WARNING - [OPENAI INSTRUMENTOR] Error setting up OpenAI streaming wrappers: No module named 'openai.resources.beta.chat'
+2025-09-04 17:18:25,338 - INFO - Session Replay for default trace: http://localhost:63700/notavailable/sessions?trace_id=b655a4692178e7f833abece940585dbf
