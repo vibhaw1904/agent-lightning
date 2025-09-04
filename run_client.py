@@ -1,69 +1,41 @@
 import dotenv
 import os
-import random
 import anthropic
 from agentlightning import configure_logger
 from agentlightning.litagent import LitAgent
 from agentlightning.trainer import Trainer
+from prompt_optimizer import calculate_reward
 
-
-class SimpleAgent(LitAgent):
-
+class Agent(LitAgent):
+    
     def training_rollout(self, task, rollout_id, resources):
-        print(f"🤖 [Client] Starting rollout {rollout_id}")
-        print(f"📋 [Client] Task: {task}")
-        print(f"🎯 [Client] Resources: {resources}")
-
         try:
-            # Use Anthropic Claude API
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
-            model_name = "claude-3-haiku-20240307"
+            # Get Claude response
+            client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
             
-            print(f"🤖 [Client] Using Anthropic Claude")
-            print(f"🤖 [Client] Model: {model_name}")
-            
-            # Initialize Anthropic client
-            client = anthropic.Anthropic(api_key=api_key)
-            
-            # Construct the messages
-            system_prompt = resources["system_prompt"].template
-            user_prompt = task["prompt"]
-            
-            print(f"🚀 [Client] Making Anthropic request...")
             response = client.messages.create(
-                model=model_name,
-                max_tokens=1000,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.7
+                model="claude-3-haiku-20240307",
+                max_tokens=500,
+                system=resources["system_prompt"].template,
+                messages=[{"role": "user", "content": task["prompt"]}]
             )
             
-            # Extract response text from Anthropic response
-            response_text = response.content[0].text
-            print(f"📝 [Client] Response: {response_text[:100]}...")
-
-            # Calculate advanced reward using our sophisticated system
-            from prompt_optimizer import calculate_advanced_reward
-            reward = calculate_advanced_reward(
-                response=response_text, 
-                query=user_prompt, 
-                system_prompt=system_prompt
-            )
-            print(f"🎯 [Client] Calculated reward: {reward}")
-
-            # Return the reward directly (Agent Lightning handles the rollout completion)
+            answer = response.content[0].text
+            
+            # Calculate reward
+            reward = calculate_reward(answer, task["prompt"])
+            
             return reward
-
+            
         except Exception as e:
-            print(f"❌ [Client] Error: {e}")
+            print(f"❌ Error: {e}")
             return 0.0
 
-
 if __name__ == "__main__":
+    print("🤖 Client starting...")
     configure_logger()
     dotenv.load_dotenv()
-    agent = SimpleAgent()
-    trainer = Trainer(n_workers=2)
+    
+    agent = Agent()
+    trainer = Trainer(n_workers=1)
     trainer.fit(agent, backend="http://127.0.0.1:9997")

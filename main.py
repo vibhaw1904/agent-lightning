@@ -3,190 +3,111 @@ from agentlightning.server import AgentLightningServer
 from agentlightning.types import NamedResources, PromptTemplate
 from prompt_optimizer import PromptOptimizer
 
-
-async def evolutionary_prompt_optimization():
-    """
-    Advanced prompt optimization with evolutionary algorithm
-    """
-    print("🌟 Agent Lightning - Evolutionary Prompt Optimization")
-    print("=" * 60)
+async def run_evolution():
+    """Clean evolution process with 5 prompts"""
     
-    # Initialize components
-    print("🔧 [Main] Initializing system components...")
+    print("🧬 PROMPT EVOLUTION SYSTEM")
+    print("=" * 40)
+    
+    # Setup
     server = AgentLightningServer(host="127.0.0.1", port=9997)
     optimizer = PromptOptimizer()
-    
-    print("🚀 [Main] Starting server...")
     await server.start()
-    print("✅ [Main] Server started successfully!")
+    print("✅ System ready")
     
-    # Initial prompt population (Generation 0)
-    current_prompts = [
-        "You are a concise, analytical AI assistant. Provide clear, structured responses with key points organized in numbered lists. Focus on delivering factual information efficiently without unnecessary elaboration.",
+    # 5 prompts with clear quality differences (100+ words each)
+    prompts = [
+        # EXCELLENT - Should score 0.8-1.0
+        "You are an expert AI assistant with deep knowledge across multiple domains. When answering questions, you should provide comprehensive, well-structured responses that include relevant examples, clear explanations, and practical insights. Always organize your thoughts into logical sections, use specific details to support your points, and ensure your response directly addresses all aspects of the user's question. Your goal is to be both informative and accessible, making complex topics understandable while maintaining accuracy and depth.",
         
-        "You are an enthusiastic educator with deep expertise in technology and learning. Write in an engaging, accessible style that makes complex topics easy to understand. Use real-world examples and analogies to illustrate your points.",
+        # VERY POOR - Should score 0.0-0.2
+        "Answer the question. Keep it short.",
         
-        "You are a balanced, thoughtful AI that presents multiple perspectives on every topic. Always discuss both benefits and potential drawbacks. Structure your responses with clear pros and cons, and conclude with a nuanced summary.",
+        # GOOD - Should score 0.6-0.8
+        "You are a helpful AI assistant that provides clear and informative responses. When someone asks a question, make sure to give a detailed answer that covers the main points. Use examples when helpful and organize your response in a logical way. Always try to be accurate and comprehensive while keeping your explanation accessible to the user.",
         
-        "You are a creative storyteller who uses narrative techniques to explain concepts. Incorporate vivid examples, hypothetical scenarios, and engaging anecdotes to make your explanations memorable and compelling.",
+        # POOR - Should score 0.2-0.4
+        "You respond to questions. Try to be helpful sometimes. Give information when you can.",
         
-        "You are a brief, direct AI assistant. Provide essential information only. Use bullet points and short paragraphs. Avoid redundancy and focus on actionable insights."
+        # AVERAGE - Should score 0.4-0.6
+        "You are an AI that answers questions with reasonable detail. Provide useful information and try to structure your responses clearly. Make sure your answers are relevant to what the user is asking about."
     ]
     
-    print(f"🧬 [Main] Starting with {len(current_prompts)} initial prompts")
+    test_question = "Explain how machine learning algorithms learn from data and improve their performance over time."
     
-    # Evolution parameters
-    num_generations = 4
-    evaluation_query = "Explain the impact of remote work on modern business culture, including productivity, collaboration, and work-life balance."
+    print(f"\n📝 Testing {len(prompts)} prompts")
+    print(f"🎯 Question: '{test_question}'")
     
-    print(f"🎯 [Main] Evaluation query: \"{evaluation_query[:50]}...\"")
-    print(f"⏳ [Main] Planning {num_generations} generations of evolution")
+    # Test all prompts
+    results = []
+    for i, prompt in enumerate(prompts, 1):
+        print(f"\n🔬 Testing Prompt {i}/5")
+        
+        # Send to client
+        resources = {"system_prompt": PromptTemplate(template=prompt, engine="f-string")}
+        await server.update_resources(resources)
+        task_id = await server.queue_task(sample={"prompt": test_question}, mode="train")
+        
+        # Get result
+        rollout = await server.poll_completed_rollout(task_id, timeout=20)
+        score = rollout.final_reward if rollout else 0.0
+        
+        results.append((prompt, score))
+        print(f"   Score: {score:.2f}")
     
-    best_overall_score = 0.0
-    best_overall_prompt = ""
-    evolution_log = []
+    # Show results
+    results.sort(key=lambda x: x[1], reverse=True)
+    print(f"\n📊 RESULTS:")
+    for i, (prompt, score) in enumerate(results, 1):
+        preview = prompt[:50].replace('\n', ' ') + "..."
+        print(f"   {i}. {score:.2f} - {preview}")
     
-    # Evolutionary loop
-    for generation in range(num_generations):
-        print(f"\n{'='*60}")
-        print(f"🧬 GENERATION {generation + 1}/{num_generations}")
-        print(f"{'='*60}")
+    best_prompt, best_score = results[0]
+    worst_prompt, worst_score = results[-1]
+    
+    print(f"\n🏆 Best: {best_score:.2f}")
+    print(f"📉 Worst: {worst_score:.2f}")
+    
+    # Evolution
+    if best_score > worst_score + 0.1:  # Only evolve if clear difference
+        print(f"\n🧬 EVOLUTION")
+        new_prompts = await optimizer.evolve_prompts(best_prompt, worst_prompt, best_score, worst_score)
         
-        print(f"📝 [Gen{generation+1}] Testing {len(current_prompts)} prompts...")
-        
-        # Test all prompts in current generation
-        generation_results = []
-        
-        for i, prompt in enumerate(current_prompts):
-            print(f"\n🔬 [Gen{generation+1}] Testing Prompt {i+1}/{len(current_prompts)}")
-            print(f"💭 [Gen{generation+1}] Prompt preview: \"{prompt[:60]}...\"")
+        if new_prompts:
+            print(f"✅ Created {len(new_prompts)} evolved prompts")
             
-            # Update resources with current prompt
-            resources: NamedResources = {
-                "system_prompt": PromptTemplate(template=prompt, engine="f-string")
-            }
-            await server.update_resources(resources)
+            # Test evolved prompts
+            print(f"\n🧪 Testing evolved prompts")
+            best_evolved_score = 0.0
             
-            # Queue task for evaluation
-            print(f"📤 [Gen{generation+1}] Queuing evaluation task...")
-            task_id = await server.queue_task(
-                sample={"prompt": evaluation_query}, 
-                mode="train"
-            )
-            
-            # Wait for completion
-            print(f"⏳ [Gen{generation+1}] Waiting for client response (30s timeout)...")
-            rollout = await server.poll_completed_rollout(task_id, timeout=30)
-            
-            if rollout is None:
-                print(f"❌ [Gen{generation+1}] Rollout timed out - assigning zero reward")
-                reward = 0.0
-            else:
-                reward = rollout.final_reward
-                print(f"✅ [Gen{generation+1}] Rollout completed successfully!")
-            
-            print(f"🏆 [Gen{generation+1}] Prompt {i+1} scored: {reward:.3f}")
-            generation_results.append((prompt, reward))
-            
-            # Track best overall
-            if reward > best_overall_score:
-                best_overall_score = reward
-                best_overall_prompt = prompt
-                print(f"🎉 [Gen{generation+1}] NEW BEST SCORE! {reward:.3f}")
-        
-        # Sort results by performance
-        generation_results.sort(key=lambda x: x[1], reverse=True)
-        
-        # Display generation summary
-        print(f"\n📊 [Gen{generation+1}] GENERATION SUMMARY:")
-        print(f"  🥇 Best: {generation_results[0][1]:.3f}")
-        print(f"  📈 Average: {sum(r[1] for r in generation_results) / len(generation_results):.3f}")
-        print(f"  📉 Worst: {generation_results[-1][1]:.3f}")
-        
-        # Show top 3 performers
-        print(f"\n🏆 [Gen{generation+1}] TOP PERFORMERS:")
-        for i, (prompt, score) in enumerate(generation_results[:3]):
-            print(f"  {i+1}. Score {score:.3f}: \"{prompt[:50]}...\"")
-        
-        # Store evolution data
-        evolution_log.append({
-            'generation': generation + 1,
-            'results': generation_results,
-            'best_score': generation_results[0][1],
-            'average_score': sum(r[1] for r in generation_results) / len(generation_results)
-        })
-        
-        # Evolve new prompts for next generation (except for last generation)
-        if generation < num_generations - 1:
-            print(f"\n🧬 [Gen{generation+1}] EVOLVING NEXT GENERATION...")
-            
-            try:
-                new_prompts = await optimizer.evolve_prompts(generation_results)
+            for i, evolved_prompt in enumerate(new_prompts, 1):
+                resources = {"system_prompt": PromptTemplate(template=evolved_prompt, engine="f-string")}
+                await server.update_resources(resources)
+                task_id = await server.queue_task(sample={"prompt": test_question}, mode="train")
                 
-                if new_prompts:
-                    current_prompts = new_prompts
-                    print(f"✨ [Gen{generation+1}] Successfully evolved {len(new_prompts)} new prompts!")
-                    
-                    # Preview evolved prompts
-                    print(f"\n🔮 [Gen{generation+1}] EVOLVED PROMPTS PREVIEW:")
-                    for i, prompt in enumerate(new_prompts[:3]):
-                        print(f"  {i+1}. \"{prompt[:60]}...\"")
-                else:
-                    print(f"⚠️ [Gen{generation+1}] Evolution failed, keeping current prompts")
-                    
-            except Exception as e:
-                print(f"❌ [Gen{generation+1}] Evolution error: {e}")
-                print(f"🔄 [Gen{generation+1}] Continuing with current prompts")
+                rollout = await server.poll_completed_rollout(task_id, timeout=20)
+                evolved_score = rollout.final_reward if rollout else 0.0
+                
+                print(f"   Evolved {i}: {evolved_score:.2f}")
+                best_evolved_score = max(best_evolved_score, evolved_score)
+            
+            # Show improvement
+            improvement = best_evolved_score - best_score
+            if improvement > 0:
+                print(f"\n🎉 IMPROVEMENT: +{improvement:.2f} ({improvement/best_score*100:+.1f}%)")
+            else:
+                print(f"\n📊 No improvement this round")
+        else:
+            print("❌ Evolution failed")
+    else:
+        print(f"\n⏭️  Scores too similar, skipping evolution")
     
-    # Final results
-    print(f"\n{'='*60}")
-    print("🎊 EVOLUTIONARY OPTIMIZATION COMPLETE!")
-    print(f"{'='*60}")
-    
-    print(f"\n📈 EVOLUTION PROGRESS:")
-    for log_entry in evolution_log:
-        print(f"  Gen {log_entry['generation']}: Best={log_entry['best_score']:.3f}, Avg={log_entry['average_score']:.3f}")
-    
-    # Calculate improvement
-    if len(evolution_log) >= 2:
-        initial_avg = evolution_log[0]['average_score']
-        final_avg = evolution_log[-1]['average_score']
-        improvement = ((final_avg - initial_avg) / initial_avg * 100) if initial_avg > 0 else 0
-        print(f"\n📊 OVERALL IMPROVEMENT: {improvement:+.1f}%")
-    
-    print(f"\n🏆 BEST OVERALL RESULT:")
-    print(f"  🎯 Score: {best_overall_score:.3f}")
-    print(f"  📝 Prompt: \"{best_overall_prompt[:100]}...\"")
-    
-    # Get evolution summary
-    summary = optimizer.get_evolution_summary()
-    if summary:
-        print(f"\n🧬 EVOLUTION STATISTICS:")
-        print(f"  📊 Total Generations: {summary['total_generations']}")
-        print(f"  🎯 Best Score Achieved: {summary['best_overall_score']:.3f}")
-        print(f"  📈 Improvement Trend: {len(summary['improvement_trend'])} data points")
-    
-    print(f"\n🛑 Stopping server...")
+    # Cleanup
     await server.stop()
-    print("✅ Server stopped successfully!")
-    
-    return {
-        'best_prompt': best_overall_prompt,
-        'best_score': best_overall_score,
-        'evolution_log': evolution_log,
-        'summary': summary
-    }
-
+    print(f"\n✅ Complete")
 
 if __name__ == "__main__":
-    print("🌟 Agent Lightning - Evolutionary Prompt Optimization Demo")
-    print("🧬 Automatically improving prompts through evolutionary algorithms")
-    print("\n⚠️ IMPORTANT: Make sure to run 'python run_client.py' in another terminal!")
+    print("⚠️  Start 'python run_client.py' in another terminal first!")
+    input("Press Enter when client is ready...")
     
-    input("\n🔄 Press Enter once you've started the client...")
-    
-    # Run the evolutionary optimization
-    results = asyncio.run(evolutionary_prompt_optimization())
-    
-    print(f"\n🎬 Demo completed! Best evolved prompt achieved {results['best_score']:.3f} score")
-    print("=" * 60)
+    asyncio.run(run_evolution())
